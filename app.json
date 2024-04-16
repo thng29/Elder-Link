@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ElderLink",
-    "slug": "ElderLink",
+    "name": "main",
+    "slug": "main",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -15,16 +15,29 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.main.mapsdemo",
+      "infoPlist": {   
+        "UIBackgroundModes": ["location", "fetch"],   
+        "NSLocationUsageDescription": "Enable location tracking feature",
+        "NSLocationWhenInUseUsageDescription": "Enable location tracking feature" }
     },
     "android": {
+      "package": "com.main.expoapp",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      }
+      },
+      "permissions": [
+        "CAMERA",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "READ_CALL_LOG",
+        "READ_PHONE_STATE"]
+    }
     },
     "web": {
       "favicon": "./assets/favicon.png"
     }
-  }
 }
+
