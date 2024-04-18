@@ -92,15 +92,15 @@ export default function Settings({route,navigation}){
     const handleSubmit = async() => {
         if(isNaN(Number(lower)) || isNaN(Number(upper))){
             Toast.show({type: 'error',text1: "Lower and Upper bound must be a number",position:'bottom'})
-            return
+            return false
         }
         else if (Number(lower) < 0 || Number(upper) < 0){
             Toast.show({type: 'error',text1: "Blood Pressure must be positive",position:'bottom'})
-            return
+            return false
         }
         else if(Number(lower) > Number(upper)){
             Toast.show({type: 'error',text1: "Lower range must be smaller than upper range",position:'bottom'})
-            return
+            return false
         }
         const data = {
             displayName: displayName,
@@ -140,13 +140,13 @@ export default function Settings({route,navigation}){
                 Accelerometer.setUpdateInterval(100);
                 Accelerometer.addListener(setAcc)
             }
+            return true
         }
         catch(err){
             console.log(err)
             Toast.show({type: 'error',text1: "Update failed ! Please Try again",position:'bottom'})
         }
     }
-
 
     return(
         <View>
@@ -171,6 +171,28 @@ export default function Settings({route,navigation}){
         </View>
     );
 };
+
+const testSetting = ()=>{
+    const test_cases_fail = [["not number",0],[0,'not number'],[-1,0],[0,-1],[101,100]]
+    for (let i = 0; i < test_cases_fail.length; i++){
+        setLow(test_cases_fail[i][0])
+        setUpper(test_cases_fail[i][1])
+        if (handleSubmit){
+            console.log("--- setting test failed ---")
+            return
+        }
+    }
+    const test_cases_pass = [[0,0],[50,50],[50,100]]
+    for (let i = 0; i < test_cases_pass.length; i++){
+        setLow(test_cases_pass[i][0])
+        setUpper(test_cases_pass[i][1])
+        if (!handleSubmit){
+            console.log("--- setting test failed ---")
+            return
+        }
+    }
+    console.log("--- setting test success ---")
+}
 
 const styles = StyleSheet.create({
     title: {

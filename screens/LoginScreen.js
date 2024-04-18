@@ -6,6 +6,7 @@ import {addDoc,collection} from "firebase/firestore"
 import Toast from 'react-native-toast-message';
 
 export default function LoginScreen({route,navigation}){
+
     const [email,setEmail] = useState("");
     const [password,setPassword] = useState("");
     const {registerSuccess} = route.params;

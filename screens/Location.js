@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View, Button, Pressable, TextInput } from 'react-native';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect} from 'react';
 import {auth,db} from "../firebaseConfig.js"
 import {signInWithEmailAndPassword} from "firebase/auth"
 import {addDoc, setDoc, doc,getDoc} from "firebase/firestore"
@@ -10,12 +10,13 @@ export default function Location({navigation,route}){
     const {uid,peer_id} = route.params;
     const [timeStr,setTimeStr] = useState("");
     const [displayName,setDisplayName] = useState("");
-    const [long,setLongitude] = useState('');
-    const [lat,setLatitude] = useState('');
+    const [long,setLongitude] = useState('114.1350359');
+    const [lat,setLatitude] = useState('22.2839936');
     const [enabled,setEnabled] = useState(null);
     const [coordinate,setCoordinate] = useState({});
     const [initial,setInitial] = useState({});
     const mapRef = useRef();
+
 
     useEffect(() => {
         async function getData(){
@@ -43,22 +44,28 @@ export default function Location({navigation,route}){
         getData()
     } , [])
 
+    useEffect(()=>{
+        console.log(long)
+        console.log(lat)
+    },[long,lat])
+
     return(
         <View>
         {enabled && <View style={styles.container}>
             <Text style={{fontSize: 20, textAlign:'center', marginTop:10,fontWeight:'bold'}}>{displayName}'s Location</Text>
             <Text style={{fontSize: 20, textAlign:'center', marginVertical:5}}>{timeStr}</Text>
-            <MapView style={styles.map} initialRegion={{longitude: long,
-                    latitude: lat,
-                    latitudeDelta: 0.1,
-                    longitudeDelta: 0.1,}}>
-                <Marker coordinate={{latitude: lat, longitude:long}}></Marker>
+            <MapView style={styles.map} initialRegion={{longitude: parseFloat(long),
+                    latitude: parseFloat(lat),
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,}}>
+                <Marker coordinate={{latitude: parseFloat(lat), longitude:parseFloat(long)}}></Marker>
             </MapView>
         </View>}
         {!enabled && <View><Text style={{fontSize:20,fontWeight:'bold',textAlign:'center',marginTop:20}}>{displayName} did not enable location tracking!</Text></View>}
         </View>
     );
 };
+
 
 const styles = StyleSheet.create({
     container:{

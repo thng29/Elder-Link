@@ -38,7 +38,8 @@
     "react-native-screens": "~3.22.0",
     "react-native-toast-message": "2.2.0",
     "typescript": "^5.4.5",
-    "node-html-parser": "6.1.13"
+    "node-html-parser": "6.1.13",
+    "react-native-google-fit": "0.20.0"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"

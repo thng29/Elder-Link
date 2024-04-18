@@ -19,6 +19,10 @@ export default function MainScreen({route,navigation}){
     const [displayName,setDisplayName] = useState("");
     const [linkList,setLinkList] = useState([])
     const [scam,setScam] = useState(false);
+    const [body,setBody] = useState(false);
+    const [upper,setUpper] = useState();
+    const [lower,setLower] = useState();
+    const [url,setUrl] = useState();
     const [{ x, y, z }, setAcc] = useState({
         x: 0,
         y: 0,
@@ -39,14 +43,42 @@ export default function MainScreen({route,navigation}){
         }
       });
     
-    const issueWarning = async(msg,t) =>{
+    const issueWarning = async(mode,data) =>{
         try{
+            const timestamp = Date.now()
+            const time = new Date(timestamp)
+            var year = time.getFullYear();
+            var month = (time.getMonth()+1).toString().padStart(2,'0');
+            var day = time.getDate().toString().padStart(2,'0');
+            var hour = time.getHours().toString().padStart(2,'0');
+            var minute = time.getMinutes().toString().padStart(2,'0');
+            var second = time.getSeconds().toString().padStart(2,'0');
+            var timeStr = [year,month,day].join('.')+' '+[hour,minute,second].join(':');
+            let warningMsg = ''
+
+            if (mode === 0){
+                warningMsg = `[${timeStr}]\n${displayName} is detected to have a suspicious fall`;
+            }
+            else if (mode === 1){
+                warningMsg = `[${timeStr}]\n${displayName} received a suspected scam call from ${data}`;
+            }
+            else if (mode === 2){
+                warningMsg = `[${timeStr}]\n${displayName} is having an abnormal heart rate: ${data} bpm`;
+            }
+
             let arr = []
             const prev = await getDoc(doc(db,'warning',uid));
             if (prev._document != null){
                 arr = prev.data().data
             }
-            arr.push({text:msg,time:t})
+
+            if (arr.length > 0){
+                if (timestamp - arr[arr.length-1].time < 5000){
+                    return
+                }
+            }
+            arr.push({text:warningMsg,time:timestamp})
+            console.log("warning issued")
             await setDoc(doc(db,'warning',uid),{data: arr});
             await setDoc(doc(db,'new_warning',uid),{warning: true});
         }
@@ -55,34 +87,11 @@ export default function MainScreen({route,navigation}){
         }
     } 
 
-    const issueScam = (number)=>{
-        const timestamp = Date.now()
-        const time = new Date(timestamp)
-        var year = time.getFullYear();
-        var month = (time.getMonth()+1).toString().padStart(2,'0');
-        var day = time.getDate().toString().padStart(2,'0');
-        var hour = time.getHours().toString().padStart(2,'0');
-        var minute = time.getMinutes().toString().padStart(2,'0');
-        var second = time.getSeconds().toString().padStart(2,'0');
-        var timeStr = [year,month,day].join('.')+' '+[hour,minute,second].join(':');
-        const warningMsg = `[${timeStr}]\n${displayName} received a suspected scam call from ${number}`;
-        issueWarning(warningMsg,timestamp)
-    }
-
     useEffect(()=>{
-    const a = 9.81 * Math.sqrt(x*x+y*y+z*z);
-    if (a > 24.25){
-        const timestamp = Date.now()
-        const time = new Date(timestamp)
-        var year = time.getFullYear();
-        var month = (time.getMonth()+1).toString().padStart(2,'0');
-        var day = time.getDate().toString().padStart(2,'0');
-        var hour = time.getHours().toString().padStart(2,'0');
-        var minute = time.getMinutes().toString().padStart(2,'0');
-        var second = time.getSeconds().toString().padStart(2,'0');
-        var timeStr = [year,month,day].join('.')+' '+[hour,minute,second].join(':');
-        const warningMsg = `[${timeStr}]\n${displayName} is detected to have a suspicious fall`;
-        issueWarning(warningMsg,timestamp)
+    const a = Math.sqrt(x*x+y*y+z*z);
+    if (a >= 3 && a <= 15){
+        console.log("fall detected")
+        issueWarning(0,0)
     }},[x,y,z])
 
     useEffect(()=>{
@@ -95,7 +104,9 @@ export default function MainScreen({route,navigation}){
                 const tracking = data.trackingEnabled;
                 const call = data.callEnabled;
                 const fall = data.fallEnabled;
-                const body = data.statusEnabled;
+                setBody(data.statusEnabled);
+                setUpper(data.upperRange);
+                setLower(data.lowerRange);
                 const trackingStarted = await Location.hasStartedLocationUpdatesAsync(TASK_FETCH_LOCATION)
                 if (tracking && !trackingStarted){
                     await Location.requestForegroundPermissionsAsync()
@@ -120,27 +131,28 @@ export default function MainScreen({route,navigation}){
                     if (Platform.constants['Release'] <= 9){
                         const permission = await PermissionsAndroid.requestMultiple([
                             PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
-                            PermissionsAndroid.PERMISSIONS.READ_CALL_LOG
-                        ]);
+                            PermissionsAndroid.PERMISSIONS.READ_CALL_LOG])
+                            this.callDetector = new CallDetectorManager(async(event, phoneNumber)=> {
+                                if (event === 'Incoming'){
+                                    console.log(phoneNumber)
+                                    await fetch(`https://www.junk-call.com/hk/${phoneNumber}`).then(
+                                        data =>{
+                                            return data.text()
+                                        })
+                                        .then(text =>{
+                                            const root = parse(text)
+                                            const node = root.querySelector('.junkcall')
+                                            if (node.innerText.includes("詐騙")){
+                                                console.log("scam call detected")
+                                                issueWarning(1,phoneNumber)
+                                            }
+                                        })
+                                }
+                            },
+                            true, 
+                            ()=>{}, 
+                            )
                     }
-                    this.callDetector = new CallDetectorManager(async(event, phoneNumber)=> {
-                        if (event === 'Incoming'){
-                            await fetch(`https://www.junk-call.com/hk/${phoneNumber}`).then(
-                                data =>{
-                                    return data.text()
-                                })
-                                .then(text =>{
-                                    const root = parse(text)
-                                    const node = root.querySelector('.junkcall')
-                                    if (node.innerText.includes("詐騙")){
-                                        issueScam(phoneNumber)
-                                    }
-                                })
-                        }
-                    },
-                    true, 
-                    ()=>{}, 
-                    )
                 }
 
                 if(!call){
@@ -163,9 +175,48 @@ export default function MainScreen({route,navigation}){
             }
     }
     getData()
-    setTimeout(() =>{setUpdate(prev=>{return prev+1})},50)
+    setTimeout(() =>{setUpdate(prev=>{return prev+1})},5000)
 },[logout]);
 
+const testFall = ()=>{
+    test_cases_fail = [[2.99,0,0],[0,2.99,0],[0,0,2.99],[15.01,0,0][0,15.01,0],[0,0,15.01]]
+    test_cases_pass = [[3,0,0],[0,3,0],[0,0,3],[15,0,0],[0,15,0][0,0,15]]
+    for (let i = 0; i < test_cases_fail.length; i++){
+        setAcc({x:test_cases_fail[i][0],y:test_cases_fail[i][1],z:test_cases_fail[i][2]})
+    }
+    for (let i = 0; i < test_cases_pass.length; i++){
+        setAcc({x:test_cases_pass[i][0],y:test_cases_pass[i][1],z:test_cases_pass[i][2]})
+    }
+}
+
+const testCall = async()=>{
+    test_cases_scam = "38975266"
+    test_cases_not_scam = "22698800"
+    await fetch(`https://www.junk-call.com/hk/${test_cases_scam}`).then(
+        data =>{
+            return data.text()
+        })
+        .then(text =>{
+            const root = parse(text)
+            const node = root.querySelector('.junkcall')
+            if (node.innerText.includes("詐騙")){
+                console.log("--- call detection test 1 success ---")
+            }
+            else{console.log("--- call detection test 1 failed ---")}
+        })
+        await fetch(`https://www.junk-call.com/hk/${test_cases_not_scam}`).then(
+            data =>{
+                return data.text()
+            })
+            .then(text =>{
+                const root = parse(text)
+                const node = root.querySelector('.junkcall')
+                if (node.innerText.includes("詐騙")){
+                    console.log("--- call detection test 2 failed ---")
+                }
+                else{console.log("--- call detection test 2 success ---")}
+            })
+}
 
     const getWarning = async() =>{
             let warnings = []
@@ -182,8 +233,24 @@ export default function MainScreen({route,navigation}){
                 }
             }
 }
+
 getWarning()
 
+if(body){
+    fetch(url).then( 
+        res =>  res.json()
+    ).then(
+        res =>{
+        let data = res.bucket[res.bucket.length-1].dataset[0].point[0]
+        if (data > upper || data < lower){
+            issueWarning(2,data)
+        }
+        }
+    ).catch( () => {
+
+    }
+    )
+}
 
     return(
         <View>
